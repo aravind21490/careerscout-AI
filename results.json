@@ -1,23 +1,16 @@
 [
   {
-    "title": "Machine Learning Internship",
-    "company": "Kukbit SL",
-    "source": "Unstop",
-    "link": "https://unstop.com/internships/machine-learning-internship-kukbit-sl-1669223",
+    "title": "Code for Change 2.0",
+    "company": "Devfolio",
+    "source": "Devfolio",
+    "link": "https://code-for-change-2026.devfolio.co/",
     "date_scraped": "2026-04-02"
   },
   {
-    "title": "Ctrl + Build",
+    "title": "SPARKATHON 1.0",
     "company": "Devfolio",
     "source": "Devfolio",
-    "link": "https://ctrl-build.devfolio.co/",
-    "date_scraped": "2026-04-02"
-  },
-  {
-    "title": "Off-Grid",
-    "company": "Devfolio",
-    "source": "Devfolio",
-    "link": "https://offgrid.devfolio.co/",
+    "link": "https://sparkathon-01.devfolio.co/",
     "date_scraped": "2026-04-02"
   },
   {
@@ -35,17 +28,17 @@
     "date_scraped": "2026-04-02"
   },
   {
-    "title": "Susegad Sprint 2026",
-    "company": "Devfolio",
-    "source": "Devfolio",
-    "link": "https://susegad-sprint.devfolio.co/",
-    "date_scraped": "2026-04-02"
-  },
-  {
     "title": "Hack.IT@BVP3.0",
     "company": "Devfolio",
     "source": "Devfolio",
     "link": "https://hackitbvp-2.devfolio.co/",
+    "date_scraped": "2026-04-02"
+  },
+  {
+    "title": "Hack-Helix",
+    "company": "Devfolio",
+    "source": "Devfolio",
+    "link": "https://hackhelix1.devfolio.co/",
     "date_scraped": "2026-04-02"
   },
   {
@@ -95,6 +88,13 @@
     "company": "Google",
     "source": "Google Careers",
     "link": "https://careers.google.com/jobs/results/107900969756304070-software-engineer-greach-program-for-people-with-disabilities-english-mandarin?category=SOFTWARE_ENGINEERING&employment_type=INTERN",
+    "date_scraped": "2026-04-02"
+  },
+  {
+    "title": "Research Scientist Intern, PhD, 2026",
+    "company": "Google",
+    "source": "Google Careers",
+    "link": "https://careers.google.com/jobs/results/74549017010152134-research-scientist-intern-phd-2026?category=SOFTWARE_ENGINEERING&employment_type=INTERN",
     "date_scraped": "2026-04-02"
   },
   {

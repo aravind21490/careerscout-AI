@@ -1,16 +1,15 @@
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 from groq import Groq
-from twilio.rest import Client
 from dotenv import load_dotenv
 import json
 import os
+import requests
 from datetime import datetime
 
 load_dotenv(override=True)
 
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-twilio_client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
 
 def is_relevant(internship):
     prompt = f"""You are a filter for a job board. Decide if this internship or hackathon is relevant for a computer science or software engineering student.
@@ -35,7 +34,6 @@ def scrape_unstop(page):
         page.wait_for_timeout(8000)
         soup = BeautifulSoup(page.content(), "html.parser")
 
-        # Get cards directly to keep title/company/link aligned
         cards = soup.find_all("a", href=True)
         listing_cards = [a for a in cards if a["href"].startswith("/internships/")]
 
@@ -63,7 +61,6 @@ def scrape_devfolio(page):
         page.wait_for_timeout(12000)
         soup = BeautifulSoup(page.content(), "html.parser")
 
-        # Real hackathon links are subdomains like hacktonix-26.devfolio.co
         seen = set()
         hackathon_links = []
         for a in soup.find_all("a", href=True):
@@ -105,7 +102,7 @@ def scrape_google_careers(page):
                     "title": title_tag.text.strip(),
                     "company": "Google",
                     "source": "Google Careers",
-                    "link": "https://careers.google.com/" + link_tag["href"],  # ← fixed
+                    "link": "https://careers.google.com/" + link_tag["href"],
                     "date_scraped": datetime.now().strftime("%Y-%m-%d")
                 })
     except Exception as e:
@@ -232,8 +229,8 @@ def scrape_amazon(page):
         for a in soup.find_all("a", href=True):
             href = a.get("href", "")
             text = a.text.strip()
-            if ("/en/jobs/" in href and 
-                "Read more" not in text and 
+            if ("/en/jobs/" in href and
+                "Read more" not in text and
                 href not in seen and
                 len(text) > 3):
                 seen.add(href)
@@ -263,7 +260,7 @@ def scrape_all():
         all_listings += scrape_microsoft_careers(page)
         all_listings += scrape_linkedin(page)
         all_listings += scrape_mlh(page)
-        all_listings += scrape_amazon(page)  # ← new
+        all_listings += scrape_amazon(page)
 
         browser.close()
     return all_listings
@@ -272,7 +269,7 @@ def filter_internships(internships):
     print("\nFiltering with AI...")
     filtered = []
     for item in internships:
-        if len(filtered) >= 15:  # ← cap at 15 to stay under Twilio limit
+        if len(filtered) >= 15:
             break
         relevant = is_relevant(item)
         status = "✅ RELEVANT" if relevant else "❌ SKIPPED"
@@ -281,38 +278,42 @@ def filter_internships(internships):
             filtered.append(item)
     return filtered
 
-def send_whatsapp(internships):
+def send_telegram(internships):
     if not internships:
         print("No relevant internships to send.")
         return
 
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
     chunks = [internships[i:i+5] for i in range(0, len(internships), 5)]
 
     for idx, chunk in enumerate(chunks):
-        message = f"🎯 *CareerScout AI ({idx+1}/{len(chunks)})*\n\n"
+        message = f"🎯 CareerScout AI - Today's Picks ({idx+1}/{len(chunks)})\n\n"
         for item in chunk:
-            message += f"*{item['company']} is hiring!*\n"
+            message += f"🏢 {item['company']} is hiring!\n"
             message += f"Role: {item['title'][:50]}\n"
             message += f"Source: {item['source']}\n"
-            message += f"Apply here:\n{item['link']}\n\n"
+            message += f"Apply here: {item['link']}\n\n"
 
-        twilio_client.messages.create(
-            from_=os.getenv("TWILIO_WHATSAPP_FROM"),
-            to=os.getenv("TWILIO_WHATSAPP_TO"),
-            body=message
-        )
-        print(f"✅ Sent batch {idx+1}/{len(chunks)} to WhatsApp!")
-        
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        response = requests.post(url, json={
+            "chat_id": chat_id,
+            "text": message
+        })
+        if response.status_code == 200:
+            print(f"✅ Sent batch {idx+1}/{len(chunks)} to Telegram!")
+        else:
+            print(f"❌ Telegram error: {response.text}")
+
 def save_results(internships):
     with open("results.json", "w", encoding="utf-8") as f:
         json.dump(internships, f, indent=2)
     print(f"Saved {len(internships)} filtered internships to results.json")
-    
 
 if __name__ == "__main__":
     results = scrape_all()
     print(f"\nTotal scraped: {len(results)} listings")
     filtered = filter_internships(results)
     save_results(filtered)
-    send_whatsapp(filtered)
-    print(f"\n✅ Done! {len(filtered)} relevant listings sent to WhatsApp.")
+    send_telegram(filtered)
+    print(f"\n✅ Done! {len(filtered)} relevant listings sent to Telegram.")
