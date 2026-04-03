@@ -21,10 +21,17 @@
     "date_scraped": "2026-04-03"
   },
   {
-    "title": "Ctrl + Build",
+    "title": "SPARKATHON 1.0",
     "company": "Devfolio",
     "source": "Devfolio",
-    "link": "https://ctrl-build.devfolio.co/",
+    "link": "https://sparkathon-01.devfolio.co/",
+    "date_scraped": "2026-04-03"
+  },
+  {
+    "title": "KJSSE GajShield Hack X",
+    "company": "Devfolio",
+    "source": "Devfolio",
+    "link": "https://hack-x.devfolio.co/",
     "date_scraped": "2026-04-03"
   },
   {
@@ -49,13 +56,6 @@
     "date_scraped": "2026-04-03"
   },
   {
-    "title": "SemiXthon",
-    "company": "Devfolio",
-    "source": "Devfolio",
-    "link": "https://semicon-semixthon.devfolio.co/",
-    "date_scraped": "2026-04-03"
-  },
-  {
     "title": "Hack.IT@BVP3.0",
     "company": "Devfolio",
     "source": "Devfolio",
@@ -67,13 +67,6 @@
     "company": "Devfolio",
     "source": "Devfolio",
     "link": "https://nmithacks26.devfolio.co/",
-    "date_scraped": "2026-04-03"
-  },
-  {
-    "title": "Research Scientist Intern, Summer 2026",
-    "company": "Google",
-    "source": "Google Careers",
-    "link": "https://careers.google.com/jobs/results/135846492295307974-research-scientist-intern-summer-2026?category=SOFTWARE_ENGINEERING&employment_type=INTERN",
     "date_scraped": "2026-04-03"
   },
   {
@@ -95,6 +88,13 @@
     "company": "Google",
     "source": "Google Careers",
     "link": "https://careers.google.com/jobs/results/102119429319336646-software-engineering-intern-phd-summer-2026?category=SOFTWARE_ENGINEERING&employment_type=INTERN",
+    "date_scraped": "2026-04-03"
+  },
+  {
+    "title": "Software Engineering Associate, gReach Program for People with Disabilities \u969c\u304c\u3044\u8005\u96c7\u7528 (Japanese)",
+    "company": "Google",
+    "source": "Google Careers",
+    "link": "https://careers.google.com/jobs/results/98700202633765574-software-engineering-associate-greach-program-for-people-with-disabilities-japanese?category=SOFTWARE_ENGINEERING&employment_type=INTERN",
     "date_scraped": "2026-04-03"
   },
   {

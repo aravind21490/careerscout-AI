@@ -2,8 +2,8 @@ name: CareerScout AI Daily Scraper
 
 on:
   schedule:
-    - cron: '0 4 * * *'  # Runs every day at 9:30 AM IST (4:00 AM UTC)
-  workflow_dispatch:  # Allows manual trigger from GitHub
+    - cron: '0 4 * * *'
+  workflow_dispatch:
 
 jobs:
   scrape:
@@ -20,15 +20,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install playwright beautifulsoup4 groq twilio python-dotenv
+          pip install playwright beautifulsoup4 groq twilio python-dotenv requests
           playwright install chromium
           playwright install-deps chromium
 
       - name: Run scraper
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
-          TWILIO_WHATSAPP_TO: ${{ secrets.TWILIO_WHATSAPP_TO }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
