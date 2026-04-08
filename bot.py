@@ -34,12 +34,9 @@ def send_chunks(chat_id, chunks: list[str]):
 
 
 def get_jobs_data():
-    """Import and run your existing scraper + Groq filter here."""
     try:
-        from scraper import fetch_all_jobs    # your existing module
-        from filter import filter_jobs        # your Groq AI filter
-        raw = fetch_all_jobs()
-        return filter_jobs(raw)
+        from scraper import scrape_unstop
+        return scrape_unstop()
     except ImportError:
         # Demo data — replace with your actual scraper
         return [
