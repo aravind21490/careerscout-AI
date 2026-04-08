@@ -19,9 +19,8 @@ bot = telebot.TeleBot(TOKEN, parse_mode="Markdown")
 
 def get_jobs():
     try:
-        from scraper import fetch_all_jobs
-        from filter import filter_jobs
-        return filter_jobs(fetch_all_jobs())
+        from scraper import scrape_unstop
+        return scrape_unstop()
     except ImportError:
         print("[BROADCAST] Warning: scraper/filter not found, using demo data.")
         return [
