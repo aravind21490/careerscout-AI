@@ -21,11 +21,15 @@ def scrape_unstop():
         
         for i in range(min(len(titles), len(companies), 10)):
             internship = {
-                "title": titles[i].text.strip(),
-                "company": companies[i].text.strip(),
-                "source": "Unstop",
-                "link": "https://unstop.com/internship",
-                "date_scraped": datetime.now().strftime("%Y-%m-%d")
+                "title":        titles[i].text.strip(),
+                "company":      companies[i].text.strip(),
+                "location":     "India",
+                "stipend":      "Not disclosed",
+                "deadline":     "Rolling",
+                "tags":         ["Unstop"],
+                "source":       "Unstop",
+                "link":         "https://unstop.com/internship",
+                "date_scraped": datetime.now().strftime("%Y-%m-%d"),
             }
             internships.append(internship)
     
