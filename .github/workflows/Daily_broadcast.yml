@@ -1,15 +1,13 @@
 name: 🚀 CareerScout Daily Broadcast
-
 on:
   schedule:
-    - cron: '0 5 * * *'     # 10:30 AM IST (UTC+5:30) every day
-  workflow_dispatch:          # Manual trigger from GitHub UI
+    - cron: '0 5 * * *'
+  workflow_dispatch:
 
 jobs:
   broadcast:
     name: Scrape & Broadcast
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v4
@@ -22,6 +20,9 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
+      - name: 🌐 Install Playwright browser
+        run: python -m playwright install chromium --with-deps
+
       - name: 🤖 Run broadcast
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -29,7 +30,7 @@ jobs:
           ADMIN_CHAT_ID:  ${{ secrets.ADMIN_CHAT_ID }}
         run: python broadcast.py
 
-      - name: 💾 Commit updated DB (subscribers list)
+      - name: 💾 Commit updated DB
         run: |
           git config user.name  "CareerScout Bot"
           git config user.email "bot@careerscout.ai"
