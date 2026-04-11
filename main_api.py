@@ -7,21 +7,6 @@ Routes:
   POST /resume             → upload resume, get ATS score + keywords
   GET  /health             → health check
   POST /telegram/webhook   → Telegram webhook (handles all bot commands)
-
-Telegram Commands:
-  /start       → subscribe + welcome message
-  /subscribe   → same as /start
-  /unsubscribe → remove from subscribers
-  /stop        → same as /unsubscribe
-  /jobs        → latest 5 internships
-  /hackathons  → latest 5 hackathons
-  /filter      → set domain preference (AI/ML, Web Dev, etc.)
-  /status      → subscriber count
-  /help        → full guide
-
-Run locally:
-  pip install fastapi uvicorn supabase groq pymupdf python-dotenv
-  uvicorn main_api:app --reload --port 8000
 """
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
@@ -32,23 +17,19 @@ from datetime import datetime
 
 load_dotenv(override=True)
 
-# ── Supabase client ──────────────────────────────────────────────────────────
 from supabase import create_client
 supabase = create_client(
     os.environ["SUPABASE_URL"],
     os.environ["SUPABASE_KEY"]
 )
 
-# ── Groq client ──────────────────────────────────────────────────────────────
 from groq import Groq
 groq_client = Groq(api_key=os.environ["GROQ_API_KEY"])
 MODEL = "llama-3.1-8b-instant"
 
-# ── Telegram config ──────────────────────────────────────────────────────────
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-# ── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="CareerScout AI",
     description="AI-powered internship & hackathon finder",
@@ -67,7 +48,6 @@ app.add_middleware(
 # TELEGRAM HELPERS
 # ════════════════════════════════════════════════════════════════════════════
 def send_telegram(chat_id: str, text: str):
-    """Send a plain text message to a single Telegram chat_id."""
     try:
         r = requests.post(f"{TELEGRAM_API}/sendMessage", json={
             "chat_id": chat_id,
@@ -82,27 +62,20 @@ def send_telegram(chat_id: str, text: str):
 
 
 def send_telegram_keyboard(chat_id: str, text: str, keyboard: list):
-    """Send a message with inline keyboard buttons."""
     try:
         r = requests.post(f"{TELEGRAM_API}/sendMessage", json={
             "chat_id": chat_id,
             "text": text,
             "parse_mode": "HTML",
-            "reply_markup": {
-                "inline_keyboard": keyboard
-            }
+            "reply_markup": {"inline_keyboard": keyboard}
         }, timeout=10)
         return r.ok
     except Exception as e:
-        print(f"  ❌ Telegram keyboard send failed for {chat_id}: {e}")
+        print(f"  ❌ Telegram keyboard send failed: {e}")
         return False
 
 
 def get_all_subscribers() -> list:
-    """
-    Fetch all subscribers from Supabase with their domain preference.
-    Returns list of dicts: [{chat_id, domain}, ...]
-    """
     subscribers = []
     own_id = os.environ.get("TELEGRAM_CHAT_ID", "")
     if own_id:
@@ -122,11 +95,6 @@ def get_all_subscribers() -> list:
 
 
 def smart_broadcast(job_domain: str, message: str):
-    """
-    ✅ Send job only to subscribers whose domain matches.
-    Users with domain=All receive everything.
-    Users with a specific domain only receive matching jobs.
-    """
     subscribers = get_all_subscribers()
     print(f"  📢 Smart broadcast [{job_domain}] to {len(subscribers)} subscribers...")
     success = 0
@@ -138,12 +106,11 @@ def smart_broadcast(job_domain: str, message: str):
                 success += 1
         else:
             skipped += 1
-    print(f"  ✅ Sent: {success} | Skipped (domain mismatch): {skipped}")
+    print(f"  ✅ Sent: {success} | Skipped: {skipped}")
     return success
 
 
 def subscribe_user(chat_id: str, first_name: str, domain: str = "All"):
-    """Save or update user in telegram_users table."""
     supabase.table("telegram_users").upsert({
         "chat_id": chat_id,
         "first_name": first_name,
@@ -153,7 +120,6 @@ def subscribe_user(chat_id: str, first_name: str, domain: str = "All"):
 
 
 def get_user_domain(chat_id: str) -> str:
-    """Get user's preferred domain filter."""
     try:
         result = supabase.table("telegram_users").select("domain").eq("chat_id", chat_id).execute()
         if result.data:
@@ -163,24 +129,31 @@ def get_user_domain(chat_id: str) -> str:
     return "All"
 
 
-def format_job_card(job: dict) -> str:
-    """Format a single job into a Telegram message card."""
+def format_job_card(job: dict, index: int = None) -> str:
+    """Format a single job into a clean numbered card — matches the desired format."""
     title    = job.get("title", "Unknown")
-    domain   = job.get("domain", "")
-    location = job.get("location", "")
+    type_    = job.get("type", "internship").capitalize()
+    company  = job.get("source", "")
+    location = job.get("location", "India")
     stipend  = job.get("stipend") or "Not disclosed"
-    deadline = job.get("deadline") or "Not specified"
+    deadline = job.get("deadline") or "Rolling"
     score    = job.get("score", 0)
     link     = job.get("link", "")
     source   = job.get("source", "")
 
+    prefix = f"<b>#{index}</b>\n" if index else ""
+
     return (
-        f"📌 <b>{title}</b>\n"
-        f"🏷️ {domain} | 📍 {location}\n"
+        f"{prefix}"
+        f"💼 {type_}\n"
+        f"🏢 {title}\n"
+        f"📍 {location}\n"
         f"💰 {stipend}\n"
-        f"⏰ {deadline}\n"
-        f"⭐ Match Score: {score}/10 | 🔎 {source}\n"
-        f"🔗 <a href='{link}'>Apply Now</a>"
+        f"⏰ Deadline: {deadline}\n"
+        f"🔎 {source}\n"
+        f"⭐ Match: {score}/10\n"
+        f"🔗 <a href='{link}'>Apply Now</a>\n"
+        f"──────────────────────────────"
     )
 
 
@@ -256,9 +229,9 @@ def handle_jobs(chat_id: str):
             ))
             return
 
-        send_telegram(chat_id, f"🎯 <b>Top {len(jobs)} Internships</b>\n━━━━━━━━━━━━━━━━━━━━━")
-        for job in jobs:
-            send_telegram(chat_id, format_job_card(job))
+        send_telegram(chat_id, f"🎯 <b>Today's Internship Picks — CareerScout AI</b>\n━━━━━━━━━━━━━━━━━━━━━")
+        for i, job in enumerate(jobs, 1):
+            send_telegram(chat_id, format_job_card(job, index=i))
         send_telegram(chat_id, "✅ Done! Use /hackathons to see hackathons.")
 
     except Exception as e:
@@ -286,9 +259,9 @@ def handle_hackathons(chat_id: str):
             ))
             return
 
-        send_telegram(chat_id, f"🏆 <b>Top {len(jobs)} Hackathons</b>\n━━━━━━━━━━━━━━━━━━━━━")
-        for job in jobs:
-            send_telegram(chat_id, format_job_card(job))
+        send_telegram(chat_id, f"🏆 <b>Today's Hackathon Picks — CareerScout AI</b>\n━━━━━━━━━━━━━━━━━━━━━")
+        for i, job in enumerate(jobs, 1):
+            send_telegram(chat_id, format_job_card(job, index=i))
         send_telegram(chat_id, "✅ Done! Use /jobs to see internships.")
 
     except Exception as e:
@@ -299,16 +272,16 @@ def handle_hackathons(chat_id: str):
 def handle_filter(chat_id: str):
     keyboard = [
         [
-            {"text": "🤖 AI/ML",          "callback_data": "filter_AI/ML"},
-            {"text": "🌐 Web Dev",         "callback_data": "filter_Web Dev"},
+            {"text": "🤖 AI/ML",        "callback_data": "filter_AI/ML"},
+            {"text": "🌐 Web Dev",       "callback_data": "filter_Web Dev"},
         ],
         [
-            {"text": "📊 Data Science",    "callback_data": "filter_Data Science"},
-            {"text": "🔒 Cybersecurity",   "callback_data": "filter_Cybersecurity"},
+            {"text": "📊 Data Science",  "callback_data": "filter_Data Science"},
+            {"text": "🔒 Cybersecurity", "callback_data": "filter_Cybersecurity"},
         ],
         [
-            {"text": "☁️ Cloud",           "callback_data": "filter_Cloud"},
-            {"text": "🌍 All Domains",     "callback_data": "filter_All"},
+            {"text": "📱 Mobile Dev",    "callback_data": "filter_Mobile Dev"},
+            {"text": "🌍 All Domains",   "callback_data": "filter_All"},
         ],
     ]
     send_telegram_keyboard(
@@ -373,23 +346,20 @@ def handle_help(chat_id: str):
 async def telegram_webhook(request: Request):
     body = await request.json()
 
-    # ── Handle inline keyboard button presses (filter selection) ────────────
     if "callback_query" in body:
-        cb         = body["callback_query"]
-        chat_id    = str(cb["message"]["chat"]["id"])
-        data       = cb.get("data", "")
+        cb      = body["callback_query"]
+        chat_id = str(cb["message"]["chat"]["id"])
+        data    = cb.get("data", "")
 
         if data.startswith("filter_"):
             domain = data.replace("filter_", "")
             handle_filter_callback(chat_id, domain)
 
-        # Answer callback to remove loading spinner on button
         requests.post(f"{TELEGRAM_API}/answerCallbackQuery", json={
             "callback_query_id": cb["id"]
         }, timeout=5)
         return {"ok": True}
 
-    # ── Handle regular text messages ─────────────────────────────────────────
     message    = body.get("message", {})
     chat_id    = str(message.get("chat", {}).get("id", ""))
     text       = message.get("text", "").strip()
@@ -473,7 +443,7 @@ def run_pipeline():
 
     saved = 0
     for r in recommended:
-        job_domain = r["extracted"].get("domain", "")
+        job_domain = r["extracted"].get("domain") or r.get("domain", "All")
         row = {
             "title":        r["extracted"].get("title", ""),
             "type":         r["extracted"].get("type", "unknown"),
@@ -493,12 +463,18 @@ def run_pipeline():
         supabase.table("jobs").insert(row).execute()
         saved += 1
 
-        if r.get("telegram_message"):
-            msg = r["telegram_message"]
-            link = r.get("link", "")
-            if link:
-                msg += f"\n\n🔗 <a href='{link}'>Apply Now</a>"
-            smart_broadcast(job_domain, msg)
+        # ✅ Broadcast using formatted card instead of AI-generated text
+        card = format_job_card({
+            "title":    r["extracted"].get("title", ""),
+            "type":     r["extracted"].get("type", "internship"),
+            "location": r["extracted"].get("location", "India"),
+            "stipend":  r["extracted"].get("stipend_or_prize") or r.get("stipend") or "Not disclosed",
+            "deadline": r["extracted"].get("deadline") or r.get("deadline") or "Rolling",
+            "score":    r["score"],
+            "source":   r.get("source", ""),
+            "link":     r.get("link", ""),
+        })
+        smart_broadcast(job_domain, card)
 
     return {
         "status": "success",
