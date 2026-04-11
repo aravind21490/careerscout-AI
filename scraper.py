@@ -17,6 +17,23 @@ HEADERS = {
 }
 
 
+# ── Domain Detection ──────────────────────────────────────────────────────────
+def detect_domain(title, description=""):
+    text = (title + " " + description).lower()
+    if any(k in text for k in ["machine learning", " ml ", "artificial intelligence", " ai ", "deep learning", "nlp", "computer vision", "llm", "generative ai", "data engineer"]):
+        return "AI/ML"
+    elif any(k in text for k in ["cyber", "security", "ethical hacking", "penetration", "network security", "infosec", "soc analyst"]):
+        return "Cybersecurity"
+    elif any(k in text for k in ["data science", "data analyst", "analytics", "tableau", "power bi", "business intelligence"]):
+        return "Data Science"
+    elif any(k in text for k in ["android", "flutter", "ios", "mobile app", "react native", "kotlin", "swift"]):
+        return "Mobile Dev"
+    elif any(k in text for k in ["web", "frontend", "front-end", "backend", "back-end", "full stack", "fullstack", "react", "node", "django", "javascript", "html", "css", "php"]):
+        return "Web Dev"
+    else:
+        return "All"
+
+
 # ── Helper ───────────────────────────────────────────────────────────────────
 def safe_get(url, timeout=15):
     try:
@@ -24,49 +41,61 @@ def safe_get(url, timeout=15):
         r.raise_for_status()
         return r
     except Exception as e:
-        print(f"  ⚠️  GET failed for {url}: {e}")
+        print(f"  WARNING: GET failed for {url}: {e}")
         return None
 
 
 # ── 1. Internshala ───────────────────────────────────────────────────────────
 def scrape_internshala():
-    print("🔍 Scraping Internshala...")
+    print("Scraping Internshala...")
     results = []
-    r = safe_get("https://internshala.com/internships/")
-    if not r:
-        return results
-    soup = BeautifulSoup(r.text, "html.parser")
-    cards = soup.find_all("div", class_="internship_meta")
-    for card in cards[:10]:
-        try:
-            title   = card.find("a", class_="job-title-href")
-            title   = title.text.strip() if title else "Internship"
-            company = card.find("p", class_="company-name")
-            company = company.text.strip() if company else "Unknown"
-            stipend = card.find("span", class_="stipend")
-            stipend = stipend.text.strip() if stipend else "Not disclosed"
-            loc     = card.find("div", class_="locations")
-            loc     = loc.get_text(strip=True) if loc else "India"
-            posted  = card.find("div", class_="status-info")
-            posted  = posted.get_text(strip=True) if posted else None
-            link_tag = card.find("a", class_="job-title-href")
-            link    = "https://internshala.com" + link_tag["href"] if link_tag else "https://internshala.com/internships"
-            results.append({
-                "title": title,
-                "description": f"{title} at {company}. Stipend: {stipend}. Location: {loc}.",
-                "location": loc, "stipend": stipend, "deadline": posted,
-                "source": "Internshala", "link": link,
-                "date_scraped": datetime.now().strftime("%Y-%m-%d"),
-            })
-        except Exception as e:
-            print(f"  Card error: {e}")
-    print(f"  ✅ {len(results)} from Internshala")
+    category_urls = [
+        ("AI/ML", "https://internshala.com/internships/machine-learning-internship/"),
+        ("AI/ML", "https://internshala.com/internships/artificial-intelligence-internship/"),
+        ("Web Dev", "https://internshala.com/internships/web-development-internship/"),
+        ("Web Dev", "https://internshala.com/internships/full-stack-development-internship/"),
+        ("Data Science", "https://internshala.com/internships/data-science-internship/"),
+        ("Cybersecurity", "https://internshala.com/internships/cyber-security-internship/"),
+        ("Mobile Dev", "https://internshala.com/internships/android-development-internship/"),
+    ]
+    for domain, url in category_urls:
+        r = safe_get(url)
+        if not r:
+            continue
+        soup = BeautifulSoup(r.text, "html.parser")
+        cards = soup.find_all("div", class_="internship_meta")
+        for card in cards[:3]:
+            try:
+                title = card.find("a", class_="job-title-href")
+                title = title.text.strip() if title else "Internship"
+                company = card.find("p", class_="company-name")
+                company = company.text.strip() if company else "Unknown"
+                stipend = card.find("span", class_="stipend")
+                stipend = stipend.text.strip() if stipend else "Not disclosed"
+                loc = card.find("div", class_="locations")
+                loc = loc.get_text(strip=True) if loc else "India"
+                posted = card.find("div", class_="status-info")
+                posted = posted.get_text(strip=True) if posted else None
+                link_tag = card.find("a", class_="job-title-href")
+                link = "https://internshala.com" + link_tag["href"] if link_tag else url
+                description = f"{title} at {company}"
+                results.append({
+                    "title": title, "description": description,
+                    "location": loc, "stipend": stipend, "deadline": posted,
+                    "domain": domain,
+                    "source": "Internshala", "type": "internship", "link": link,
+                    "date_scraped": datetime.now().strftime("%Y-%m-%d"),
+                })
+            except Exception:
+                continue
+        time.sleep(1)
+    print(f"  OK {len(results)} from Internshala")
     return results
 
 
 # ── 2. Unstop ────────────────────────────────────────────────────────────────
 def scrape_unstop():
-    print("🔍 Scraping Unstop...")
+    print("Scraping Unstop...")
     results = []
     r = safe_get("https://unstop.com/competitions")
     if not r:
@@ -83,18 +112,19 @@ def scrape_unstop():
             link  = "https://unstop.com" + link_tag["href"] if link_tag and link_tag.get("href") else "https://unstop.com"
             results.append({
                 "title": title, "description": desc or title,
-                "location": "Online", "source": "Unstop", "link": link,
+                "location": "Online", "domain": detect_domain(title, desc),
+                "source": "Unstop", "type": "hackathon", "link": link,
                 "date_scraped": datetime.now().strftime("%Y-%m-%d"),
             })
         except Exception as e:
             print(f"  Card error: {e}")
-    print(f"  ✅ {len(results)} from Unstop")
+    print(f"  OK {len(results)} from Unstop")
     return results
 
 
 # ── 3. Devfolio ──────────────────────────────────────────────────────────────
 def scrape_devfolio():
-    print("🔍 Scraping Devfolio...")
+    print("Scraping Devfolio...")
     results = []
     r = safe_get("https://devfolio.co/hackathons")
     if not r:
@@ -104,7 +134,6 @@ def scrape_devfolio():
     seen = set()
     for tag in cards:
         href = tag.get("href", "")
-        # Only actual hackathon subdomains, not nav links
         if "devfolio.co" not in href or href in seen:
             continue
         if any(x in href for x in ["/hackathons", "/api", "/u/", "/login"]):
@@ -113,20 +142,20 @@ def scrape_devfolio():
         title_el = tag.find(["h2", "h3", "h4"])
         title = title_el.text.strip() if title_el else href.split("//")[-1].split(".")[0].title()
         results.append({
-            "title": title + " Hackathon",
-            "description": f"Hackathon on Devfolio: {title}",
-            "location": "Online", "source": "Devfolio", "link": href,
+            "title": title + " Hackathon", "description": f"Hackathon on Devfolio: {title}",
+            "location": "Online", "domain": detect_domain(title),
+            "source": "Devfolio", "type": "hackathon", "link": href,
             "date_scraped": datetime.now().strftime("%Y-%m-%d"),
         })
         if len(results) >= 8:
             break
-    print(f"  ✅ {len(results)} from Devfolio")
+    print(f"  OK {len(results)} from Devfolio")
     return results
 
 
-# ── 4. MLH (Major League Hacking) ────────────────────────────────────────────
+# ── 4. MLH ───────────────────────────────────────────────────────────────────
 def scrape_mlh():
-    print("🔍 Scraping MLH...")
+    print("Scraping MLH...")
     results = []
     r = safe_get("https://mlh.io/seasons/2025/events")
     if not r:
@@ -137,7 +166,6 @@ def scrape_mlh():
         try:
             title = event.find("h3", class_="event-name")
             title = title.text.strip() if title else "MLH Hackathon"
-            # Clean noise like emoji/icons from title
             title = " ".join(w for w in title.split() if w.isascii())
             date  = event.find("p", class_="event-date")
             date  = date.text.strip() if date else ""
@@ -148,18 +176,19 @@ def scrape_mlh():
             results.append({
                 "title": title or "MLH Hackathon",
                 "description": f"MLH hackathon. Date: {date}. Location: {loc}",
-                "location": loc, "deadline": date, "source": "MLH", "link": link,
+                "location": loc, "deadline": date, "domain": detect_domain(title),
+                "source": "MLH", "type": "hackathon", "link": link,
                 "date_scraped": datetime.now().strftime("%Y-%m-%d"),
             })
         except Exception as e:
             print(f"  Card error: {e}")
-    print(f"  ✅ {len(results)} from MLH")
+    print(f"  OK {len(results)} from MLH")
     return results
 
 
-# ── 5. LinkedIn (public search, no auth) ─────────────────────────────────────
+# ── 5. LinkedIn ───────────────────────────────────────────────────────────────
 def scrape_linkedin():
-    print("🔍 Scraping LinkedIn...")
+    print("Scraping LinkedIn...")
     results = []
     url = "https://www.linkedin.com/jobs/search/?keywords=AI+ML+internship+India&location=India&f_E=1"
     r = safe_get(url)
@@ -177,21 +206,23 @@ def scrape_linkedin():
             loc     = loc.text.strip() if loc else "India"
             link_tag = card.find("a", class_="base-card__full-link")
             link    = link_tag["href"].split("?")[0] if link_tag else "https://linkedin.com/jobs"
+            description = f"{title} at {company}. Location: {loc}"
             results.append({
-                "title": title,
-                "description": f"{title} at {company}. Location: {loc}",
-                "location": loc, "source": "LinkedIn", "link": link,
+                "title": title, "description": description,
+                "location": loc, "stipend": "Not disclosed",
+                "domain": detect_domain(title, description),
+                "source": "LinkedIn", "type": "internship", "link": link,
                 "date_scraped": datetime.now().strftime("%Y-%m-%d"),
             })
         except Exception as e:
             print(f"  Card error: {e}")
-    print(f"  ✅ {len(results)} from LinkedIn")
+    print(f"  OK {len(results)} from LinkedIn")
     return results
 
 
 # ── 6. Google Careers ─────────────────────────────────────────────────────────
 def scrape_google_careers():
-    print("🔍 Scraping Google Careers...")
+    print("Scraping Google Careers...")
     results = []
     url = "https://careers.google.com/jobs/results/?q=intern&location=India"
     r = safe_get(url)
@@ -207,23 +238,21 @@ def scrape_google_careers():
             loc   = loc.text.strip() if loc else "India"
             link_tag = card.find("a")
             link  = "https://careers.google.com" + link_tag["href"] if link_tag and not link_tag["href"].startswith("http") else (link_tag["href"] if link_tag else "https://careers.google.com")
+            description = f"{title} at Google. Location: {loc}"
             results.append({
-                "title": title, "description": f"{title} at Google. Location: {loc}",
-                "location": loc, "source": "Google Careers", "link": link,
+                "title": title, "description": description,
+                "location": loc, "domain": detect_domain(title, description),
+                "source": "Google Careers", "type": "internship", "link": link,
                 "date_scraped": datetime.now().strftime("%Y-%m-%d"),
             })
         except Exception as e:
             print(f"  Card error: {e}")
-    print(f"  ✅ {len(results)} from Google Careers")
+    print(f"  OK {len(results)} from Google Careers")
     return results
 
 
 # ── MAIN EXPORT ───────────────────────────────────────────────────────────────
 def run_all_scrapers():
-    """
-    Runs all scrapers and returns a combined deduplicated list.
-    This is the function imported by main_api.py.
-    """
     print("\n" + "="*50)
     print("CareerScout AI — Running all scrapers")
     print("="*50)
@@ -243,10 +272,9 @@ def run_all_scrapers():
             results = scraper()
             all_results.extend(results)
         except Exception as e:
-            print(f"  ❌ Scraper failed: {e}")
-        time.sleep(1)  # Be polite to servers
+            print(f"  Scraper failed: {e}")
+        time.sleep(1)
 
-    # Deduplicate by link
     seen_links = set()
     unique = []
     for item in all_results:
@@ -255,7 +283,7 @@ def run_all_scrapers():
             seen_links.add(link)
             unique.append(item)
 
-    print(f"\n🎯 Total: {len(unique)} unique listings from {len(scrapers)} sources")
+    print(f"\nTotal: {len(unique)} unique listings from {len(scrapers)} sources")
     return unique
 
 
@@ -264,7 +292,7 @@ if __name__ == "__main__":
     results = run_all_scrapers()
     with open("results.json", "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
-    print(f"\n💾 Saved {len(results)} listings to results.json")
+    print(f"\nSaved {len(results)} listings to results.json")
     print("\nSample:")
-    for r in results[:3]:
-        print(f"  [{r['source']}] {r['title']} — {r.get('location', 'N/A')}")
+    for r in results[:5]:
+        print(f"  [{r.get('domain', 'All')}] [{r['source']}] {r['title']} — {r.get('location', 'N/A')}")
